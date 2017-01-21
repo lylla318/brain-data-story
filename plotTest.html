@@ -1,0 +1,1079 @@
+<html>
+
+
+
+<head>
+
+  <!-- <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script> -->
+
+  <script src="https://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+
+  <meta charset="utf-8"/>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+
+  <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/jstat/1.5.2/jstat.min.js"></script>
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.9/angular.min.js"></script>
+
+  <script src = "https://rawgit.com/mattboldt/typed.js/master/js/typed.js"></script>
+<!-- 
+  <link rel="stylesheet" type="text/css" href="d3.slider.css" media="screen" /> -->
+
+  <script type="text/javascript" src="slider2.js"></script>
+
+  <link rel="stylesheet" href="slider2.css" /> 
+
+  <script type="text/javascript" src="regression.js"></script>
+
+
+
+  <link href="style.css" rel='stylesheet' type='text/css'>
+
+  <link href='https://fonts.googleapis.com/css?family=Roboto:400,300,500,100' rel='stylesheet' type='text/css'>
+
+  <link href='https://fonts.googleapis.com/css?family=Inconsolata' rel='stylesheet' type='text/css'>
+
+</head>
+
+
+
+
+
+<body>
+
+  <!-- MAIN WRAPPER -->
+
+  <div id="wrapper" style="width:2000px; height: 3000px; margin-left:0px;">
+
+    <div class="type"> </type>
+
+      <p class="console" style="font-size:40px; color:#d3d3d3;">
+
+        <span></span><span id="caption"></span><span id="cursor">|</span>
+
+      </p>
+
+      
+
+    </div> 
+
+      
+
+      <!-- MENUS -->
+
+      <div class="secondary-menus">
+
+        <div id = "dataset-picker-1" >
+
+          <h2>Select Disorders(s).</h2> 
+
+            <a id = "allDisorders" class = "allToggle hover-underline">All Disorders</a>
+
+            <a id = "ADDADHDSelect" class = "toggle down disorderToggle hover-underline" >ADHD</a>
+
+            <a id = "AutismSpectrumSelect" class = "toggle disorderToggle hover-underline" >Autism</a>
+
+            <a id = "LearningDisabilitySelect" class = "toggle disorderToggle hover-underline" style = "display: flex; align-items: center;">Learning Disability</a>
+
+        </div>
+
+      </div>
+
+      <!-- SIGNICANCE  -->
+
+      <div id = "significance">
+
+        <h2>Is your trend significant?</h2>
+
+            <span id = "pvalue"></span>
+
+      </div>
+
+      <!-- SECOND VIZ -->
+
+      <div class="plots">
+
+        <!-- LINE PLOT -->
+
+        <div id="trendswrapper">
+
+          <div id = "trends"></div>
+
+        </div>
+
+        <!-- HEAT MAP -->
+
+        <div id="heatmap"></div>
+
+      </div>
+
+  </div>
+
+</div>
+
+
+<script>
+
+    
+
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    ////////////////////////////  LINE PLOT CODE  ///////////////////////////////
+
+    /////////////////////////////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////////////////////////////////
+
+
+function leastSquares(points) {
+
+  var model = { intercept: 0, slope: 0 };
+  
+
+  if (points.length == 0) { return model; }
+
+  if (points.length == 1) {
+
+    model.slope = points[0].y / points[0].x;
+
+    return model;
+
+  }
+
+
+
+  var meanX = d3.mean(points, function (d) { 
+
+    return d.x;
+
+  });
+
+
+
+  var meanY = d3.mean(points, function (d) { 
+
+    return d.y;
+
+  });
+
+
+
+  model.slope = d3.sum(points, function (d) {
+
+    return (d.x - meanX) * (d.y - meanY);
+
+  });
+
+
+
+  model.slope /= d3.sum(points, function (d) {
+
+    return (d.x - meanX) * (d.x - meanX);
+
+  });
+
+
+
+  model.intercept = meanY - model.slope * meanX;
+
+  return model;
+
+}
+
+
+
+var margin = {top: 50, right: 30, bottom: 150, left: 80},
+
+    width = 700 - margin.left - margin.right,
+
+    height = 500 - margin.top - margin.bottom;
+
+
+
+var axisColor = "#d3d3d3";
+
+
+
+var devData = {"<0.50":{"ADDADHD_boys":55.0,"ADDADHD_girls":15.0,"AutismSpectrum_boys":11.0,"AutismSpectrum_girls":2.0,"LearningDisability_boys":42.0,"LearningDisability_girls":23.0,"boys":416.0,"girls":371.0},
+
+"0.50-0.99":{"ADDADHD_boys":91.0,"ADDADHD_girls":48.0,"AutismSpectrum_boys":27.0,"AutismSpectrum_girls":5.0,"LearningDisability_boys":83.0,"LearningDisability_girls":51.0,"boys":755.0,"girls":771.0},
+
+"1.00-1.49":{"ADDADHD_boys":79.0,"ADDADHD_girls":40.0,"AutismSpectrum_boys":23.0,"AutismSpectrum_girls":9.0,"LearningDisability_boys":73.0,"LearningDisability_girls":42.0,"boys":729.0,"girls":746.0},
+
+"1.50-1.99":{"ADDADHD_boys":74.0,"ADDADHD_girls":24.0,"AutismSpectrum_boys":22.0,"AutismSpectrum_girls":3.0,"LearningDisability_boys":50.0,"LearningDisability_girls":30.0,"boys":602.0,"girls":569.0},
+
+"2.00-2.49":{"ADDADHD_boys":58.0,"ADDADHD_girls":23.0,"AutismSpectrum_boys":18.0,"AutismSpectrum_girls":6.0,"LearningDisability_boys":36.0,"LearningDisability_girls":18.0,"boys":501.0,"girls":475.0},
+
+"2.50-2.99":{"ADDADHD_boys":39.0,"ADDADHD_girls":19.0,"AutismSpectrum_boys":10.0,"AutismSpectrum_girls":4.0,"LearningDisability_boys":33.0,"LearningDisability_girls":12.0,"boys":460.0,"girls":459.0},
+
+"3.00-3.49":{"ADDADHD_boys":35.0,"ADDADHD_girls":14.0,"AutismSpectrum_boys":8.0,"AutismSpectrum_girls":2.0,"LearningDisability_boys":25.0,"LearningDisability_girls":12.0,"boys":403.0,"girls":362.0},
+
+"3.50-3.99":{"ADDADHD_boys":20.0,"ADDADHD_girls":10.0,"AutismSpectrum_boys":9.0,"AutismSpectrum_girls":3.0,"LearningDisability_boys":17.0,"LearningDisability_girls":10.0,"boys":324.0,"girls":323.0},
+
+"4.00-4.49":{"ADDADHD_boys":32.0,"ADDADHD_girls":13.0,"AutismSpectrum_boys":7.0,"AutismSpectrum_girls":1.0,"LearningDisability_boys":17.0,"LearningDisability_girls":12.0,"boys":279.0,"girls":273.0},
+
+"4.50-5.00":{"ADDADHD_boys":24.0,"ADDADHD_girls":10.0,"AutismSpectrum_boys":5.0,"AutismSpectrum_girls":1.0,"LearningDisability_boys":19.0,"LearningDisability_girls":6.0,"boys":202.0,"girls":204.0},
+
+">5.00":{"ADDADHD_boys":89.0,"ADDADHD_girls":40.0,"AutismSpectrum_boys":28.0,"AutismSpectrum_girls":10.0,"LearningDisability_boys":57.0,"LearningDisability_girls":31.0,"boys":1007.0,"girls":975.0}}
+
+
+
+
+
+//removes element id from array
+
+function removeItem(elementID,array){
+
+  
+
+  var item = elementID.slice(0,-6);
+
+  var index = array.indexOf(item);
+
+  
+
+  if (index > -1) {
+
+    return array.splice(index, 1);
+
+  } else {
+
+    return array;
+
+  }
+
+}
+
+
+
+//Adds an elementid name to an array
+
+function addItem (elementID,array) {
+
+  var item = elementID.slice(0,-6);
+
+  array.push(item);
+
+}
+
+
+
+//Given an arbitrary number of object column names, sum the values in each row
+
+function sumMerge(data,columns){
+
+  var toReturn = {};
+
+    
+
+  for (var row in data){
+
+      var rowSum = 0;
+
+      columns.forEach(function(column){
+
+        rowSum += data[row][column];
+
+      });
+
+
+
+      toReturn[row] = rowSum;
+
+    }
+
+
+
+  return toReturn;
+
+}
+
+
+
+//Sum across genders and columns
+
+function typeMerge(data,genders,columnTypes){
+
+  var toReturn = {};
+
+    
+
+  for (var row in data){
+
+      var rowSum = 0;
+
+      columnTypes.forEach(function(type){
+
+        genders.forEach(function(gender){
+
+          rowSum += data[row][type + "_" + gender];
+
+        });
+
+      });
+
+
+
+      toReturn[row] = rowSum;
+
+    }
+
+
+
+  return toReturn;
+
+}
+
+//Returns an obeject where the values in num are divded by the corresponding
+
+//values in denom
+
+function divideMerge(num,denom){
+
+  var toReturn = {}
+
+  for(var key in num){
+
+    toReturn[key] = num[key] / denom[key];
+
+  }
+
+  return toReturn;
+
+}
+
+//Sums data from an arbitrary number of disability counts and divides
+
+//by the total number of children in each income group. Totals is also of 
+
+//arbitrary so that we can plot boys vs girls
+
+function mergeSets(disabilities,totals){
+
+  var disSummed = typeMerge(devData,totals,disabilities);
+
+  var totalSummed = sumMerge(devData,totals);
+
+
+
+  //Need to format this nicely for plotting
+
+  var percents = divideMerge(disSummed,totalSummed);
+
+
+
+  var toReturn = [];
+
+
+
+  for (key in percents){
+
+    toReturn.push({"group" : key,
+
+                   "percentDisabled" : percents[key]});
+
+  };
+
+  return toReturn;
+
+}
+
+
+
+function leastSquaresOrdinal(points, x_scale, y_scale) {
+
+  //Run a least squares regression with an ordinal x axis.
+
+  //Note that the output does not require scaling on its own
+
+  var model = { intercept: 0, slope: 0 };
+
+
+
+  //Transform x points so that we can run regression
+
+  points = points.map(function (d){
+
+    return {"x" : x_scale(d.group), "y": y_scale(d.percentDisabled)}
+
+  });
+
+  
+
+  if (points.length == 0) { return model; }
+
+  if (points.length == 1) {
+
+    model.slope = points[0].y / points[0].x;
+
+    return model;
+
+  }
+
+
+
+  var meanX = d3.mean(points, function (d) { 
+
+    return d.x;
+
+  });
+
+
+
+  var meanY = d3.mean(points, function (d) { 
+
+    return d.y;
+
+  });
+
+
+
+  model.slope = d3.sum(points, function (d) {
+
+    return (d.x - meanX) * (d.y - meanY);
+
+  });
+
+
+
+  model.slope /= d3.sum(points, function (d) {
+
+    return (d.x - meanX) * (d.x - meanX);
+
+  });
+
+
+
+  model.intercept = meanY - model.slope * meanX;
+
+
+
+  //Need to calculate SSR
+
+  var SSR = d3.sum(points.map(function (d){
+
+    return Math.pow((model.slope * d.x + model.intercept) - d.y,2);
+
+  }));
+
+
+
+  var SST = d3.sum(points.map(function (d){
+
+    return Math.pow((d.y - meanY),2);
+
+  }));
+
+
+
+  model.n = points.length;
+
+  model.rSquared = 1 - (SSR/SST);
+
+  model.fStat = ((model.rSquared)/((1-model.rSquared)/(model.n -2)));
+
+  model.p = 1 - jStat.centralF.cdf(model.fStat,1,model.n -1);
+
+
+
+  return model;
+
+}
+
+
+
+function plotTrend(data){
+
+  // Plots points on the axis
+  // Remove old points and axis, want to change this so that they transition
+  // Also probably want to make axis transition animated
+  // d3.selectAll(".datapoint").remove();
+  //Still need that x scale, let's keep it encapsulated
+
+  var groups = data.map(function(d){return d.group;})
+
+  var x = d3.scale.ordinal().domain(groups).rangePoints([0,width]);
+
+  var y_max = d3.max(data, function(d){return d.percentDisabled;});
+
+  var y_max_padded = y_max + 0.15 * y_max
+
+  var y = d3.scale.linear().range([height, 0])
+
+                  .domain([0, y_max_padded]);
+
+  var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5);
+
+  //Change the y axis
+
+  d3.select(".y_axis")
+
+      .transition()
+
+      .duration(transitionDuration)
+
+      .call(yAxis);
+
+
+  var points = trends.selectAll(".datapoint")
+    .data(data)
+    .transition()
+    .duration(transitionDuration)
+    .attr("cx", function (d) { return x(d.group); })
+    .attr("cy", function (d) { return y(d.percentDisabled); });
+
+    // .attr("r", 10)
+
+    // .attr("class","datapoint")
+
+    // .style("fill", "PowderBlue");
+
+  var highlights = trends.selectAll(".highlight").data(data)
+    .transition()
+    .duration(transitionDuration)
+    .attr("cx", function (d) { return x(d.group); })
+    .attr("cy", function (d) { return y(d.percentDisabled); });
+
+  //Run regression and plot result
+  var model = leastSquaresOrdinal(data,x,y);
+  updateSig(model);
+
+
+ trends.select(".regression")
+      .transition()
+      .duration(transitionDuration)
+      .attr("x1", 0)
+      .attr("y1", model.intercept)
+      .attr("x2", width)
+      .attr("y2", (model.slope * width + model.intercept));
+}
+
+
+
+//Called when  we need to update the significance div
+
+function updateSig(model){
+
+  var formatter = d3.format(".3f");
+
+  var pValue = formatter(model.p);
+
+  var pTarget = d3.select("#pvalue");
+
+  // var isig = d3.select("#isig");
+
+
+
+  if (pValue > 0.10){
+
+    pTarget.text("This probably isn't significant. p = " + pValue + ", so by most standards this wouldn't count.           ")
+
+        .style("color","#C0C0C0");
+
+  }else if (pValue > 0.05){
+
+    pTarget.text("This trend might be significant. p = " + pValue + ", so some might call it significant. You're almost there.")
+
+        .style("color","#b5dbe8");
+
+  }else{
+
+    pTarget.text("Good job! It looks like you found a significant trend! p = " + pValue + ", so many scientists would call it significant.")
+
+        .style("color","#00ff00");
+
+  }
+
+
+
+}
+
+
+
+//Called when we need to plot the data in trendDisorders and
+
+//trendPopulations
+
+//useful for transitions: http://bl.ocks.org/d3noob/7030f35b72de721622b8
+
+function updateTrend(){
+
+  var merged = mergeSets(trendDisorders,trendPopulations);
+
+  plotTrend(merged);
+
+}
+
+
+
+//Just sets up the axis labels and plots an intitial trend
+
+function init(){
+
+  //We want trends to be global
+
+  trends = d3.select("#trends")
+
+    .append("svg")
+
+        .attr("width", width + margin.left + margin.right + 20)
+
+        .attr("height", height + margin.top + margin.bottom + 20)
+
+        .attr("fill", axisColor)
+
+    .append("g")
+
+        .attr("transform", 
+
+              "translate(" + margin.left + "," + margin.top + ")")
+
+        .attr("fill", axisColor);
+
+
+
+
+
+  trends.append("text").attr("x", width /2)
+
+                    .attr("y", height + 100)
+
+                    .style("text-anchor","middle")
+
+                    .text("Family Income as Fraction of Federal Poverty Line")
+
+                    .attr("fill", axisColor)
+
+                    .style("font-size","14px");
+
+
+
+  trends.append("text")
+
+      .attr("transform", "rotate(-90)")
+
+      .attr("y", -55 )
+
+      .attr("x",  -1 * height/2)
+
+      .style("text-anchor", "middle")
+
+      .text("Percent With Disability")
+
+      .style("font-size","14px");
+
+
+
+
+
+  trends.append("text")
+
+      .attr("y", 5 )
+
+      .attr("x", width/2)
+
+      .style("text-anchor", "middle")
+
+      .text("Impact of Income")
+
+      .style("font-size","14px");
+
+
+
+  //Set up the intial data
+
+  var data = mergeSets(trendDisorders,trendPopulations);
+
+  var groups = data.map(function(d){return d.group;})
+
+  var x = d3.scale.ordinal().domain(groups).rangePoints([0,width]);
+
+  var xAxis = d3.svg.axis().scale(x).orient("bottom").ticks(5);
+
+  trends.append("g")
+
+        .attr("class", "x_axis")
+
+        .call(xAxis).attr("transform","translate(0,"+ height + ")")
+
+            .selectAll("text")
+
+            .style("font-size","14px")  
+
+            .style("text-anchor", "end")
+
+            .attr("dx", "-.8em")
+
+            .attr("dy", ".15em")
+
+            .attr("transform", function(d) {
+
+                return "rotate(-65)" 
+
+                });;
+
+
+
+  var y_max = d3.max(data, function(d){return d.percentDisabled;});
+
+  var y_max_padded = y_max + 0.15 * y_max;
+
+  var y = d3.scale.linear().range([height, 0])
+
+                  .domain([0, y_max_padded]);
+
+  //var formatPercent = d3.format("0.00%");
+
+  var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5).tickFormat(function(y){return y+"%";});
+
+  //var yAxis = d3.svg.axis().scale(y).orient("left").ticks(5)
+
+
+
+  trends.append("g")
+
+      .attr("class", "y_axis")
+
+      .call(yAxis)
+
+      .style("font-size","14px")
+
+      .attr("stroke-width", 1);
+
+
+
+ var highlights = trends.selectAll(".highlight").data(data).enter()
+
+    .append("circle")
+
+    .attr("cx", function (d) { return x(d.group); })
+
+    .attr("id", function (d) { return ratioToId[d.group] + "_highlight"; })
+
+    .attr("cy", function (d) { return y(d.percentDisabled); })
+
+    .attr("r", 13)
+
+    .attr("class","highlight")
+
+    .style("fill", "none");
+
+      
+
+  var points = trends.selectAll(".circle").data(data).enter()
+
+    .append("circle")
+
+    .attr("cx", function (d) { return x(d.group); })
+
+    .attr("id", function (d) { return ratioToId[d.group]; })
+
+    .attr("cy", function (d) { return y(d.percentDisabled); })
+
+    .attr("r", 10)
+
+    .attr("class","datapoint")
+
+    // .style("fill", "#00CD00");
+    .style("fill", "#3333FF");
+
+ 
+
+
+
+  //Need to add empty boxes to use for hover events
+
+ var highlightBars = trends.selectAll(".highlightBars").data(data).enter()
+
+    .append("rect")
+
+    .attr("width", width / data.length)
+
+    .attr("height",height)
+
+    .attr("y", 0)
+
+    .attr("x", function (d) { return x(d.group) - (width / data.length)/2; })
+
+    .style("fill", "none")
+
+    .style("pointer-events","all")
+
+    .attr("class","highlightBars")
+
+    .attr("id", function (d) { return ratioToId[d.group] + "_highlightBar"; });
+
+
+
+  //Run regression and plot result
+
+  var model = leastSquaresOrdinal(data,x,y);
+
+  updateSig(model);
+
+  var regressionLine = trends.append("line")
+
+      .attr("class", "regression")
+
+      .attr("x1", 0)
+
+      .attr("y1", model.intercept)
+
+      .attr("x2", width)
+
+      .attr("y2", (model.slope * width + model.intercept))
+
+      .style("stroke", "#d3d3d3");
+
+}
+
+
+
+//Initial display
+
+init();
+
+//Handle the toggle events
+
+d3.selectAll(".toggle").on("click", function(d){
+
+  var button = d3.select(this);
+
+  var isDown = button.classed("down");
+
+  //Was a valid operation performed? If so, redraw
+
+  var goodToDraw = false;
+
+  //The user wants to remove these data, only proceed if there' at least one
+  //other item in the array
+
+  if(isDown){
+
+    //Dealing with population parameter
+
+    if(button.classed("disorderToggle") && trendDisorders.length >1){
+
+      removeItem(button.attr("id"),trendDisorders);
+
+      goodToDraw = true;
+
+    }
+
+    else if(button.classed("popToggle") && trendPopulations.length > 1){
+
+      removeItem(button.attr("id"),trendPopulations);
+
+      goodToDraw = true;
+
+
+
+    }
+
+  }
+
+
+
+  //The user wants to add data
+
+  else if (!isDown){
+
+    if(button.classed("disorderToggle")){
+
+      //Did we come from the all state?
+
+      if(d3.select("#allDisorders").classed("down")){
+
+        d3.select("#allDisorders").classed("down",false);
+
+        trendDisorders = [];
+
+      }
+
+      addItem(button.attr("id"),trendDisorders);
+
+      goodToDraw = true;
+
+
+
+    }else{
+
+      if(d3.select("#allGenders").classed("down")){
+
+        d3.select("#allGenders").classed("down",false);
+
+      }
+
+      d3.selectAll(".popToggle").classed("down",false);
+
+      trendPopulations = [];
+
+      addItem(button.attr("id"),trendPopulations);
+
+      goodToDraw = true;
+
+    }
+
+  }
+
+
+
+  //Was a valid operation performed?
+
+  if(goodToDraw){
+
+    updateTrend();
+
+    update_heatmap(trendDisorders,trendPopulations);
+
+    //Now change the class of the button
+
+    button.classed("down", (!isDown));
+
+  }
+
+
+
+})
+
+
+
+// Handle the All Disorder event
+
+d3.select("#allDisorders").on("click",function(d){
+
+  var button = d3.select(this);
+
+  var isDown = button.classed("down");
+
+
+
+  if (isDown){
+
+    //What should happen if the button is down and clicked? Maybe just plot one of the disorders?
+
+  }else{
+
+    //User wants to plot all disorders
+
+    //All buttons pop up
+
+    d3.selectAll(".disorderToggle").classed("down",false);
+
+    button.classed("down",true);
+
+    trendDisorders = ["ADDADHD","AutismSpectrum","LearningDisability"];
+
+    updateTrend();
+
+    update_heatmap(trendDisorders,trendPopulations);
+
+  }
+
+
+
+});
+
+
+
+d3.select("#allGenders").on("click",function(d){
+
+  var button = d3.select(this);
+
+  var isDown = button.classed("down");
+
+
+
+  if (isDown){
+
+    //What should happen if the button is down and clicked? Maybe just plot one of the disorders?
+
+  }else{
+
+    //User wants to plot both genders
+
+    //All buttons pop up
+
+    d3.selectAll(".popToggle").classed("down",false);
+
+    button.classed("down",true);
+
+    trendPopulations = ["boys","girls"];
+
+    updateTrend();
+
+    update_heatmap(trendDisorders,trendPopulations);
+
+
+
+  }
+
+
+
+});
+
+
+
+//Handle the heatmap selection
+
+d3.selectAll(".highlightBars").on("mouseover", function (d){
+
+  var selected = d3.select(this)
+
+  var type = d3.select(this).attr("id").slice(0,-13);
+
+  var typeRectClass = type + "_heatmap";
+
+
+
+  //Point highlight effect
+
+  d3.select("#" + type + "_highlight").style("fill", "white");
+
+  //Do the heatmap effect
+
+  d3.selectAll(".heatmapHover").
+
+  filter(":not(."+typeRectClass + ")")
+            .transition()
+            .duration(transitionDuration * 0.5)
+            .style("opacity", 0.1);
+});
+
+d3.selectAll(".highlightBars").on("mouseout", function (d){
+  var type = d3.select(this).attr("id").slice(0,-13);;
+  var typeRectClass = type + "_heatmap";
+
+  //Point highlight effect
+
+  d3.select("#" + type + "_highlight").style("fill", "none");
+
+  d3.selectAll(".heatmapHover").
+  filter(":not(."+typeRectClass + ")")
+            .transition()
+            .duration(transitionDuration * 0.5)
+            .style("opacity", 1);
+});
+
+
+
+
+
+  
+    /////////////////////////////////////////////////////////////////////////////
+
+    /////////////////////////////////////////////////////////////////////////////
+
+
+
+</script>
+
+</body>
+
+</html>
